@@ -6,10 +6,29 @@ using System.Threading;
 
 public partial class Player : CharacterBody2D
 {
-	[Export] public float Speed = 300.0f;
-	[Export] public float JumpVelocity = -500.0f;
+	float Speed,JumpVelocity;
+	int health;
 
-	[Export] int health = 3;
+	private ExtendedComponent Component = new ExtendedComponent();
+	private void ComponentSetup()
+	{
+		Component.Set("Health",new HealthData(3,100));
+		Component.Set("Stat",new UnitStat(300,500,1,null));
+	}
+
+	private void UnitSetup()
+	{
+		Component.Get<UnitStat>("Stat",(UnitStat) => {
+			Speed = UnitStat.HorizontalSpeed;
+			JumpVelocity = UnitStat.JumpSpeed * -1;
+		});
+
+		Component.Get<HealthData>("Health",(HealthData) => {
+			health = HealthData.CurrentHealth;
+		});
+	}
+
+	private HealthData healthData = new HealthData(100,100);
 
 	private GameManager _gameManager;
 	private EventManager _eventManager;
@@ -81,6 +100,9 @@ public partial class Player : CharacterBody2D
 
 	public override void _Ready()
 	{
+		ComponentSetup();
+		UnitSetup();
+		GD.Print(health);
 		_gameManager = GameManager.Instance;
 
 		_eventManager = _gameManager.GetEventManager();
@@ -374,4 +396,77 @@ public partial class Player : CharacterBody2D
 	{
 		weapon_handler.Shoot();
 	}
+
+	public override void _Input(InputEvent @event)
+    {
+        if (@event is InputEventKey eventKey)
+        {
+            if (eventKey.Keycode == Key.W && eventKey.Pressed)
+            {
+                _rawInput.Y = JumpVelocity;
+            }
+
+            if (eventKey.Keycode == Key.S && eventKey.Pressed)
+            {
+                _rawInput.Y = -1;
+            }
+
+            if (eventKey.Keycode == Key.A && eventKey.Pressed)
+            {
+                _rawInput.X = -1 * Speed;
+            }
+
+            if (eventKey.Keycode == Key.D && eventKey.Pressed)
+            {
+                _rawInput.X = Speed;
+            }
+
+            if (eventKey.Keycode == Key.Shift && !eventKey.Pressed)
+            {
+                _eventManager.TriggerEventAsThread("_Input_Shift", parameters => { });
+            }
+
+            if (eventKey.Keycode == Key.Space && eventKey.Pressed)
+            {
+                _eventManager.TriggerEventAsThread("_Input_Accept", Args =>
+                {
+                    var callback = (int)Args;
+                    switch (callback)
+                    {
+                        case 0:
+                            GD.Print("Input accepted");
+                            break;
+                        case 1:
+                            GD.Print("Input rejected");
+                            break;
+                    }
+                    // GD.Print(Args as string);
+                    // GD.Print("Input accepted");
+                }, _rawInput);
+            }
+
+            if (eventKey.Keycode == Key.K && eventKey.Pressed)
+            {
+                _eventManager.TriggerEventAsThread("_Input_K", parameters => { });
+            }
+
+            if (eventKey.Keycode == Key.J && eventKey.Pressed)
+            {
+                _eventManager.TriggerEventAsThread("_Input_J", parameters => { });
+            }
+        }
+
+        if (@event is InputEventMouseButton eventMouseButton)
+        {
+            if (eventMouseButton.ButtonIndex == MouseButton.Left && eventMouseButton.Pressed)
+            {
+                _eventManager.TriggerEventAsThread("_Input_Click_Left", parameters => { });
+            }
+
+            if (eventMouseButton.ButtonIndex == MouseButton.Right && eventMouseButton.Pressed)
+            {
+                _eventManager.TriggerEventAsThread("_Input_Click_Right", parameters => { });
+            }
+        }
+    }
 }
